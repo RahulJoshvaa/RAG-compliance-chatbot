@@ -1,12 +1,13 @@
 from semantic_cache import get_cache
 from llm_client import generate
 
+cache = get_cache()
+
 while True:
     query = input("Enter the query: ")
     if query == "1":
         break
     else:
-        cache = get_cache()
         cached = cache.get(query)
         if cached:
             print("Cache HIT")
