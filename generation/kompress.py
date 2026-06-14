@@ -5,20 +5,20 @@ from headroom.transforms.kompress_compressor import (
 )
 
 # Mild compression for compliance documents
-config = KompressConfig(
+
+
+def compress_context(query, chunks):
+    config = KompressConfig(
     score_threshold=0.3,
     chunk_words=500,
     enable_ccr=True
 )
-print("Loading Kompress...")
+    print("Loading Kompress...")
 
-kompress = KompressCompressor(config=config)
+    kompress = KompressCompressor(config=config)
 
+    print("Kompress Loaded")
 
-print("Kompress Loaded")
-
-
-def compress_context(query, chunks):
 
     content = "\n\n".join(
         chunk["text"]
