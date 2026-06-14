@@ -1,0 +1,4 @@
+google-generativeai
+headroom-ai[all]
+sentence-transformers
+torch
