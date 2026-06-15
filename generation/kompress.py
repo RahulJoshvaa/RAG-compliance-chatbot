@@ -9,9 +9,9 @@ from headroom.transforms.kompress_compressor import (
 
 def compress_context(query, chunks):
     config = KompressConfig(
-    score_threshold=0.3,
-    chunk_words=500,
-    enable_ccr=True
+    score_threshold=0.2,
+    chunk_words=130,
+    enable_ccr=False
 )
     print("Loading Kompress...")
 
@@ -27,6 +27,7 @@ def compress_context(query, chunks):
 
     result = kompress.compress(
         content,
+        context=query
     )
 
     print("\n===== KOMPRESS STATS =====")

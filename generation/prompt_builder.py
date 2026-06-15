@@ -1,5 +1,5 @@
 from kompress import compress_context
-from mock_retriever import retrieve
+from src.retrieve import retrieve_context
 
 SYSTEM_PROMPT = """
 You are a financial compliance assistant.
@@ -14,7 +14,7 @@ Rules:
 
 
 def build_prompt(query: str) -> str:
-    chunks = retrieve(query)
+    chunks = retrieve_context(query)
     context = compress_context(query, chunks)
 
     return f"""

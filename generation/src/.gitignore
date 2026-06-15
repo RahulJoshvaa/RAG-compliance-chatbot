@@ -1,0 +1,5 @@
+chroma_db/
+parent_document_store.json
+# Python
+__pycache__/
+*.pyc
