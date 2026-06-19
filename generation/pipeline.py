@@ -17,4 +17,5 @@ while True:
             answer = generate(query)
             if answer:
                 cache.put(query = query, response = answer)
+                print("ANSWER FOR THE QUERY")
                 print(answer)
