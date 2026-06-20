@@ -5,6 +5,7 @@ __pycache__/
 # Virtual environments
 venv/
 .venv/
+.ragas_gemini_env
 
 # Environment variables
 .env

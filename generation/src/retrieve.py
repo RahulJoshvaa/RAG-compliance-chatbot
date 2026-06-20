@@ -6,7 +6,7 @@ import os
 BASE_DIR = os.path.dirname(__file__)
 
 
-def retrieve_context(query, top_k=10):
+def retrieve_context(query, top_k=5):
     db_path = os.path.join(BASE_DIR, "chroma_db")
     parent_store_path = os.path.join(
         BASE_DIR,
@@ -62,12 +62,12 @@ def retrieve_context(query, top_k=10):
                 })
 
     # 6. Display what our baseline control group found
-    print(f"\n=== Baseline Control Group Results (Found {len(retrieved_contexts)} Unique Matching Blocks) ===")
-    for idx, ctx in enumerate(retrieved_contexts):
-        print(f"\n[Match #{idx+1}] Source: {ctx['source']} (Page {ctx['page']})")
-        print("-" * 60)
-        print(ctx['text'][:400] + "..." if len(ctx['text']) > 400 else ctx['text'])
-        print("-" * 60)
+    # print(f"\n=== Baseline Control Group Results (Found {len(retrieved_contexts)} Unique Matching Blocks) ===")
+    # for idx, ctx in enumerate(retrieved_contexts):
+    #     print(f"\n[Match #{idx+1}] Source: {ctx['source']} (Page {ctx['page']})")
+    #     print("-" * 60)
+    #     print(ctx['text'][:400] + "..." if len(ctx['text']) > 400 else ctx['text'])
+    #     print("-" * 60)
 
     return retrieved_contexts
 
