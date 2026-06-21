@@ -11,7 +11,7 @@ sys.path.append(
     )
 )
 
-from generation.config import GEMINI_API_KEY, GEMINI_MODEL
+from config import GEMINI_API_KEY, GEMINI_MODEL
 import google.generativeai as genai
 
 # =====================================================

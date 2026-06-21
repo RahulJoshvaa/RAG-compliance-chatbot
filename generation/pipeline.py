@@ -3,7 +3,6 @@ from llm_client import generate
 
 cache = get_cache()
 
-<<<<<<< HEAD
 def run_pipeline_wo_cache(query):
     answer = generate(query)
 
@@ -42,21 +41,3 @@ if __name__ == "__main__":
 
         print("\nANSWER FOR THE QUERY\n")
         print(answer)
-=======
-while True:
-    query = input("Enter the query: ")
-    if query == "1":
-        break
-    else:
-        cached = cache.get(query)
-        if cached:
-            print("Cache HIT")
-            print(cached.response)
-        else:
-            print("Cache MISS")
-            answer = generate(query)
-            if answer:
-                cache.put(query = query, response = answer)
-                print("ANSWER FOR THE QUERY")
-                print(answer)
->>>>>>> ad4f8f3c309e735c18d0f8579e7f692f948e0480
