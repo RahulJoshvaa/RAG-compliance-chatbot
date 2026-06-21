@@ -4,7 +4,7 @@ import json
 import tiktoken
 import chromadb
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 def evaluate_retrieval_performance(retrieved_contexts, pricing_per_1k_tokens=0.0015):
@@ -28,47 +28,46 @@ def evaluate_retrieval_performance(retrieved_contexts, pricing_per_1k_tokens=0.0
 
 def calculate_sources_fit_rate_ai(query, retrieved_contexts):
     """
-    Calculates the Sources-fit rate automatically using a FREE OpenRouter Cloud Model.
-    Requires OPENROUTER_API_KEY to be set in your environment variables.
     """
-    print(f"\n[AI EVALUATION] Grading Context Precision for: '{query}'")
+    # for calculation of fit rate, add the api key in enviroment variables
+    print(f"\nGrading Context Precision for: '{query}'")
     
-    # Initialize the OpenRouter connection using the OpenAI connector structure
-    try:
-        api_key = os.environ.get("OPENROUTER_API_KEY")
-        if not api_key:
-            raise ValueError("API Key missing from Environment Variables")
-            
-        ai_judge = ChatOpenAI(
-            # Using Meta's Llama 3.1 8B model via OpenRouter's 100% free tier
-            model="meta-llama/llama-3.1-8b-instruct:free", 
-            api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
-            temperature=0
-        )
-    except Exception as e:
-        print("[Error] Could not initialize OpenRouter AI Judge. Is your OPENROUTER_API_KEY set?")
+    # Check for the Google Gemini API Key
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("GEMINI_API_KEY is missing from your terminal environment.")
         return {"relevant_chunks": 0, "total_chunks": len(retrieved_contexts), "sources_fit_rate_percent": 0.0}
+
+    # the next line initializes the Gemini model 
+    ai_judge = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        temperature=0,
+        google_api_key=api_key,
+        max_retries=2
+    )
 
     relevant_count = 0
     total_chunks = len(retrieved_contexts)
     
     for idx, chunk in enumerate(retrieved_contexts):
-        print(f"--- Grading Match #{idx + 1}... ", end="", flush=True)
+        print(f"Grading Match #{idx + 1}... ", end="", flush=True)
         
-        # The prompt that forces the AI to act as a strict classifier
         system_prompt = SystemMessage(content="You are a strict compliance evaluator. Your only job is to check if the provided text contains the factual answer to the user's query. Respond strictly with 'YES' or 'NO'. Do not explain your reasoning.")
         user_prompt = HumanMessage(content=f"Query: {query}\n\nText to evaluate: {chunk['text']}")
         
-        # Request evaluation from OpenRouter
-        response = ai_judge.invoke([system_prompt, user_prompt])
-        verdict = response.content.strip().upper()
-        
-        if "YES" in verdict:
-            print("Verdict: PASS (Relevant)")
-            relevant_count += 1
-        else:
-            print("Verdict: FAIL (Irrelevant)")
+        try:
+            # Safely request evaluation from Gemini
+            response = ai_judge.invoke([system_prompt, user_prompt])
+            verdict = response.content.strip().upper()
+            
+            if "YES" in verdict:
+                print("Verdict: PASS (Relevant)")
+                relevant_count += 1
+            else:
+                print("Verdict: FAIL (Irrelevant)")
+                
+        except Exception as e:
+            print(f"Verdict: ERROR (API failed: {str(e)[:50]}...)")
             
     # Calculate the exact percentage
     sources_fit_rate = (relevant_count / total_chunks) * 100 if total_chunks > 0 else 0.0
@@ -95,7 +94,7 @@ def retrieve_context(query, top_k=3):
         # tries to open the database containing the tiny search vector
         child_collection = chroma_client.get_collection(name="compliance_child_chunks")
     except Exception:
-        print("[Error] Could not find the vector database collection.")
+        print("Could not find the vector database collection.")
         return
 
     # Load the Parent document mapper or the JSON vault where the files are stored
@@ -103,10 +102,10 @@ def retrieve_context(query, top_k=3):
         with open(parent_store_path, "r") as file:
             parent_document_store = json.load(file)
     except FileNotFoundError:
-        print("[Error] Parent document store file missing.")
+        print("Parent document store file missing.")
         return
 
-    print(f"\n[Query] Searching baseline database for: '{query}'")
+    print(f"\nSearching baseline database for: '{query}'")
 
     # searches the database for the top k chunks that matches the query using tiny child vector
     results = child_collection.query(
@@ -140,20 +139,18 @@ def retrieve_context(query, top_k=3):
     end_time = time.perf_counter()
     latency_ms = (end_time - start_time) * 1000
 
-    # this line runs the Automated AI Sources-Fit Grader (Via Free OpenRouter Model)
+    # this line runs the Automated AI Sources-Fit Grader via Google Gemini
     fit_metrics = calculate_sources_fit_rate_ai(query, retrieved_contexts)
 
     # calculates the rest automated metrics
     metrics = evaluate_retrieval_performance(retrieved_contexts)
     
     # prints the final results here
-    print("\n=== SYSTEM PERFORMANCE METRICS ===")
+    print("\n SYSTEM PERFORMANCE METRICS ")
     print(f"Latency per query: {latency_ms:.2f} ms")
     print(f"Tokens per query: {metrics['tokens_per_query']} tokens")
-    print(f"Projected Cloud Cost per 1k queries: ${metrics['cost_per_1k_queries']} (Actual OpenRouter Cost: $0.00)")
-    print(f"Sources-fit rate (AI Graded): {fit_metrics['sources_fit_rate_percent']}% ({fit_metrics['relevant_chunks']}/{fit_metrics['total_chunks']} chunks relevant)")
-    print("==================================\n")
-
+    print(f"Cost per 1000 queries: ${metrics['cost_per_1k_queries']} (Actual Gemini Cost: $0.00)")
+    print(f"Sources-fit rate: {fit_metrics['sources_fit_rate_percent']}% ({fit_metrics['relevant_chunks']}/{fit_metrics['total_chunks']} chunks relevant)")
     return retrieved_contexts
 
 if __name__ == "__main__":
