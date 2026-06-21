@@ -8,7 +8,9 @@ def evaluate_retrieval_performance(retrieved_contexts, pricing_per_1k_tokens=0.0
     """
     Calculates the automated efficiency and cost metrics.
     """
+    # the next line loads the GPT4 tokenizer logic
     tokenizer = tiktoken.get_encoding("cl100k_base")
+    # converts the paragraphs into one single massive text block
     full_context_text = " ".join([chunk["text"] for chunk in retrieved_contexts])
     
     tokens = len(tokenizer.encode(full_context_text))
@@ -30,10 +32,10 @@ def calculate_sources_fit_rate(query, retrieved_contexts):
     
     for idx, chunk in enumerate(retrieved_contexts):
         print(f"\n--- Retrieved Match #{idx + 1} ---")
-        # Print a short 300-character snippet so you can read it quickly
+        # Prints a short 300 character snippet ti decide if it contains the relevant answer or not
         print(chunk['text'][:300] + "...\n")
         
-        # Pause the script and ask you for judgment
+        # this line pauses the script and asks for yes or no
         is_relevant = input("Does this chunk contain the correct regulatory answer? (y/n): ").strip().lower()
         if is_relevant == 'y':
             relevant_count += 1
@@ -51,24 +53,25 @@ def calculate_sources_fit_rate(query, retrieved_contexts):
     }
 
 def retrieve_context(query, top_k=3):
-    # --- START LATENCY STOPWATCH ---
+    # starts the latency stopwatch
     start_time = time.perf_counter()
-
+    # these are the path to find the local database folder
     db_path = "./chroma_db"
     parent_store_path = "parent_document_store.json"
 
-    # 1. Initialize the embedding model
+    # initialize the embedding model to turn the query into vector array for searching
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     
-    # 2. Connect to ChromaDB
+    # Connects to ChromaDB or our local vector database
     chroma_client = chromadb.PersistentClient(path=db_path)
     try:
+        # tries to open the database containing the tiny search vector
         child_collection = chroma_client.get_collection(name="compliance_child_chunks")
     except Exception:
         print("[Error] Could not find the vector database collection.")
         return
 
-    # 3. Load the Parent document mapper
+    # Load the Parent document mapper or the JSON vault where the files are stored
     try:
         with open(parent_store_path, "r") as file:
             parent_document_store = json.load(file)
@@ -78,41 +81,46 @@ def retrieve_context(query, top_k=3):
 
     print(f"\n[Query] Searching baseline database for: '{query}'")
 
-    # 4. Search the database
+    # searches the database for the top k chunks that matches the query using tiny child vector
     results = child_collection.query(
         query_texts=[query],
         n_results=top_k
     )
 
-    # 5. Fetch the Parent contexts
+    # extracting the metadata tags from the search results containing the parent ID to map them back to their original parent paragraphs
     metadatas = results['metadatas'][0] if results['metadatas'] else []
+    # keep track of the duplicates
     seen_parents = set()
+    # holds the final text
     retrieved_contexts = []
 
     for meta in metadatas:
         parent_id = meta.get("parent_id")
+        # this line helps us to prevent from pulling the exact same paragraph twice
         if parent_id and parent_id not in seen_parents:
             seen_parents.add(parent_id)
+            # uses the parent id to access the data for that specific original paragraph
             if parent_id in parent_document_store:
                 parent_data = parent_document_store[parent_id]
+                # saves the clean text data along with the metadata
                 retrieved_contexts.append({
                     "text": parent_data["text"],
                     "source": parent_data["metadata"]["source_file"],
                     "page": parent_data["metadata"]["page_number"]
                 })
 
-    # --- STOP LATENCY STOPWATCH ---
+    # stops the latency stopwatch
     end_time = time.perf_counter()
     latency_ms = (end_time - start_time) * 1000
 
-    # 6. Run the Interactive Sources-Fit Grader
+    # this line runs the Interactive Sources-Fit Grader
     fit_metrics = calculate_sources_fit_rate(query, retrieved_contexts)
 
-    # 7. Calculate automated metrics
+    # calculates the rest automated metrics
     metrics = evaluate_retrieval_performance(retrieved_contexts)
     
-    # 8. Print the Final Dashboard
-    print("\n=== SYSTEM PERFORMANCE METRICS ===")
+    # prints the final results here
+    print("\n SYSTEM PERFORMANCE METRICS  ")
     print(f"Latency per query: {latency_ms:.2f} ms")
     print(f"Tokens per query: {metrics['tokens_per_query']} tokens")
     print(f"Cost per 1,000 queries: ${metrics['cost_per_1k_queries']}")
