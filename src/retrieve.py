@@ -1,8 +1,11 @@
+import os
 import time
 import json
 import tiktoken
 import chromadb
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 
 def evaluate_retrieval_performance(retrieved_contexts, pricing_per_1k_tokens=0.0015):
     """
@@ -14,6 +17,7 @@ def evaluate_retrieval_performance(retrieved_contexts, pricing_per_1k_tokens=0.0
     full_context_text = " ".join([chunk["text"] for chunk in retrieved_contexts])
     
     tokens = len(tokenizer.encode(full_context_text))
+    # We leave the cost calculation here to show project leads what a cloud API *would* have cost
     cost_per_single_query = (tokens / 1000) * pricing_per_1k_tokens
     cost_per_1k_queries = cost_per_single_query * 1000
     
@@ -22,29 +26,52 @@ def evaluate_retrieval_performance(retrieved_contexts, pricing_per_1k_tokens=0.0
         "cost_per_1k_queries": round(cost_per_1k_queries, 4)
     }
 
-def calculate_sources_fit_rate(query, retrieved_contexts):
+def calculate_sources_fit_rate_ai(query, retrieved_contexts):
     """
-    Calculates the Sources-fit rate by prompting the user to verify relevance in the terminal.
+    Calculates the Sources-fit rate automatically using a FREE OpenRouter Cloud Model.
+    Requires OPENROUTER_API_KEY to be set in your environment variables.
     """
-    print(f"\n[MANUAL EVALUATION] Query: '{query}'")
+    print(f"\n[AI EVALUATION] Grading Context Precision for: '{query}'")
+    
+    # Initialize the OpenRouter connection using the OpenAI connector structure
+    try:
+        api_key = os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("API Key missing from Environment Variables")
+            
+        ai_judge = ChatOpenAI(
+            # Using Meta's Llama 3.1 8B model via OpenRouter's 100% free tier
+            model="meta-llama/llama-3.1-8b-instruct:free", 
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+            temperature=0
+        )
+    except Exception as e:
+        print("[Error] Could not initialize OpenRouter AI Judge. Is your OPENROUTER_API_KEY set?")
+        return {"relevant_chunks": 0, "total_chunks": len(retrieved_contexts), "sources_fit_rate_percent": 0.0}
+
     relevant_count = 0
     total_chunks = len(retrieved_contexts)
     
     for idx, chunk in enumerate(retrieved_contexts):
-        print(f"\n--- Retrieved Match #{idx + 1} ---")
-        # Prints a short 300 character snippet ti decide if it contains the relevant answer or not
-        print(chunk['text'][:300] + "...\n")
+        print(f"--- Grading Match #{idx + 1}... ", end="", flush=True)
         
-        # this line pauses the script and asks for yes or no
-        is_relevant = input("Does this chunk contain the correct regulatory answer? (y/n): ").strip().lower()
-        if is_relevant == 'y':
+        # The prompt that forces the AI to act as a strict classifier
+        system_prompt = SystemMessage(content="You are a strict compliance evaluator. Your only job is to check if the provided text contains the factual answer to the user's query. Respond strictly with 'YES' or 'NO'. Do not explain your reasoning.")
+        user_prompt = HumanMessage(content=f"Query: {query}\n\nText to evaluate: {chunk['text']}")
+        
+        # Request evaluation from OpenRouter
+        response = ai_judge.invoke([system_prompt, user_prompt])
+        verdict = response.content.strip().upper()
+        
+        if "YES" in verdict:
+            print("Verdict: PASS (Relevant)")
             relevant_count += 1
+        else:
+            print("Verdict: FAIL (Irrelevant)")
             
     # Calculate the exact percentage
-    if total_chunks > 0:
-        sources_fit_rate = (relevant_count / total_chunks) * 100
-    else:
-        sources_fit_rate = 0.0
+    sources_fit_rate = (relevant_count / total_chunks) * 100 if total_chunks > 0 else 0.0
         
     return {
         "relevant_chunks": relevant_count,
@@ -113,18 +140,18 @@ def retrieve_context(query, top_k=3):
     end_time = time.perf_counter()
     latency_ms = (end_time - start_time) * 1000
 
-    # this line runs the Interactive Sources-Fit Grader
-    fit_metrics = calculate_sources_fit_rate(query, retrieved_contexts)
+    # this line runs the Automated AI Sources-Fit Grader (Via Free OpenRouter Model)
+    fit_metrics = calculate_sources_fit_rate_ai(query, retrieved_contexts)
 
     # calculates the rest automated metrics
     metrics = evaluate_retrieval_performance(retrieved_contexts)
     
     # prints the final results here
-    print("\n SYSTEM PERFORMANCE METRICS  ")
+    print("\n=== SYSTEM PERFORMANCE METRICS ===")
     print(f"Latency per query: {latency_ms:.2f} ms")
     print(f"Tokens per query: {metrics['tokens_per_query']} tokens")
-    print(f"Cost per 1,000 queries: ${metrics['cost_per_1k_queries']}")
-    print(f"Sources-fit rate: {fit_metrics['sources_fit_rate_percent']}% ({fit_metrics['relevant_chunks']}/{fit_metrics['total_chunks']} chunks relevant)")
+    print(f"Projected Cloud Cost per 1k queries: ${metrics['cost_per_1k_queries']} (Actual OpenRouter Cost: $0.00)")
+    print(f"Sources-fit rate (AI Graded): {fit_metrics['sources_fit_rate_percent']}% ({fit_metrics['relevant_chunks']}/{fit_metrics['total_chunks']} chunks relevant)")
     print("==================================\n")
 
     return retrieved_contexts
