@@ -1,5 +1,6 @@
 from semantic_cache import get_cache
 from llm_client import generate
+from control_group import get_answer
 
 cache = get_cache()
 
@@ -36,8 +37,16 @@ if __name__ == "__main__":
 
         if query == "1":
             break
+        print("Choose the pipeline for answer generation\n1.Headroom RAG\n2.Traditional RAG")
+        option = int(input("Enter the option: "))
 
-        answer = run_pipeline(query)
+        if option == 1:
+            answer = run_pipeline(query)
+        elif option == 2:
+            answer = get_answer(query)
+        else:
+            print("Enter valid option")
+            break
 
         print("\nANSWER FOR THE QUERY\n")
         print(answer)

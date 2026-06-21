@@ -1,16 +1,4 @@
 from src.retrieve import retrieve_context
-
-SYSTEM_PROMPT = """
-You are a financial compliance assistant.
-
-Rules:
-1. Answer only using the provided context.
-2. Do not hallucinate.
-
-3. Be concise and accurate.
-"""
-
-
 import google.generativeai as genai
 
 from config import (
@@ -18,27 +6,24 @@ from config import (
     GEMINI_MODEL
 )
 
-genai.configure(
-    api_key=GEMINI_API_KEY
-)
+SYSTEM_PROMPT = """
+You are a financial compliance assistant.
 
-model = genai.GenerativeModel(
-    GEMINI_MODEL
-)
+Rules:
+1. Answer only using the provided context.
+2. Do not hallucinate.
+3. Be concise and accurate.
+"""
 
-def generate(prompt) -> str:
+genai.configure(api_key=GEMINI_API_KEY)
 
-    response = model.generate_content(
-        prompt
-    )
-
-    return response.text
+model = genai.GenerativeModel(GEMINI_MODEL)
 
 
-def build_prompt(query: str) -> str:
+def get_answer(query: str) -> str:
     chunks = retrieve_context(query)
 
-    return f"""
+    prompt = f"""
 {SYSTEM_PROMPT}
 
 CONTEXT:
@@ -47,14 +32,19 @@ CONTEXT:
 QUESTION:
 {query}
 """
-    
+
+    response = model.generate_content(prompt)
+
+    return response.text
 
 
-while True:
-    query = input("Enter the query: ")
-    if query == "1":
-        break
-    else:
-        prompt = build_prompt(query)
-        answer = generate(prompt)
+# Example usage
+if __name__ == "__main__":
+    while True:
+        query = input("Enter the query: ")
+
+        if query == "1":
+            break
+
+        answer = get_answer(query)
         print(answer)
