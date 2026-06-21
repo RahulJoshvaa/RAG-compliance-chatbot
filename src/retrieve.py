@@ -35,7 +35,7 @@ def calculate_sources_fit_rate_ai(query, retrieved_contexts):
     # Check for the Google Gemini API Key
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("GEMINI_API_KEY is missing from your terminal environment.")
+        print("GEMINI_API_KEY is missing from the terminal environment.")
         return {"relevant_chunks": 0, "total_chunks": len(retrieved_contexts), "sources_fit_rate_percent": 0.0}
 
     # the next line initializes the Gemini model 
@@ -154,6 +154,6 @@ def retrieve_context(query, top_k=3):
     return retrieved_contexts
 
 if __name__ == "__main__":
-    # Test your baseline pipeline with a specific question you know the answer to
+    # Testing the baseline pipeline with the query
     sample_query = "What are the rules regarding risk management framework and ICT compliance?"
     retrieve_context(sample_query, top_k=3)
