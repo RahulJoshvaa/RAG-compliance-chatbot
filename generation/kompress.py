@@ -1,53 +1,132 @@
-
-from headroom.transforms.kompress_compressor import (
-    KompressCompressor,
-    KompressConfig
+import re
+from sentence_transformers import (
+    SentenceTransformer,
+    util
 )
 
-# Mild compression for compliance documents
-
-
-def compress_context(query, chunks):
-    config = KompressConfig(
-    score_threshold=0.2,
-    chunk_words=100,
-    enable_ccr=False
+# Keep same embedding as retriever for fair comparison
+model = SentenceTransformer(
+    "sentence-transformers/all-MiniLM-L6-v2"
 )
-    print("Loading Kompress...")
 
-    kompress = KompressCompressor(config=config)
 
-    print("Kompress Loaded")
-
+def compress_context(
+    query,
+    chunks,
+    top_n=10,
+    window_size=1
+):
+    print("Loading Sentence Compressor...")
 
     content = "\n\n".join(
         chunk["text"]
         for chunk in chunks
     )
 
-    result = kompress.compress(
-        content,
-        context=query
+    original_words = len(content.split())
+
+    sentences = [
+        s.strip()
+        for s in re.split(
+            r'(?<=[.!?])\s+',
+            content
+        )
+        if s.strip()
+    ]
+
+    if not sentences:
+        return content
+
+    query_embedding = model.encode(
+        query,
+        convert_to_tensor=True
     )
 
-    print("\n===== KOMPRESS STATS =====")
+    sentence_embeddings = model.encode(
+        sentences,
+        convert_to_tensor=True
+    )
+
+    scores = util.cos_sim(
+        query_embedding,
+        sentence_embeddings
+    )[0]
+
+    # Rank sentences by similarity
+    ranked = sorted(
+        enumerate(scores),
+        key=lambda x: float(x[1]),
+        reverse=True
+    )
+
+    # Keep top N
+    top_indices = {
+        idx
+        for idx, _
+        in ranked[:min(top_n, len(sentences))]
+    }
+
+    # Add neighboring sentences for context
+    selected_indices = set()
+
+    for idx in top_indices:
+        start = max(
+            0,
+            idx - window_size
+        )
+
+        end = min(
+            len(sentences),
+            idx + window_size + 1
+        )
+
+        for i in range(start, end):
+            selected_indices.add(i)
+
+    compressed_sentences = [
+        sentences[i]
+        for i in sorted(selected_indices)
+    ]
+
+    compressed_text = "\n".join(
+        compressed_sentences
+    )
+
+    compressed_words = len(
+        compressed_text.split()
+    )
+
+    print("\n===== COMPRESSION STATS =====")
 
     print(
-        "Original Tokens:",
-        result.original_tokens
+        "Total Sentences:",
+        len(sentences)
     )
 
     print(
-        "Compressed Tokens:",
-        result.compressed_tokens
+        "Selected Sentences:",
+        len(selected_indices)
     )
 
     print(
-        "Tokens Saved:",
-        result.original_tokens -
-        result.compressed_tokens
+        "Original Words:",
+        original_words
     )
 
-    # print(result.compressed)
+    print(
+        "Compressed Words:",
+        compressed_words
+    )
 
-    return result.compressed
+    print(
+        "Words Saved:",
+        original_words -
+        compressed_words
+    )
+
+    print(
+        "Compression Ratio:",
+        f"{compressed_words/original_words:.2f}"
+    )
+
+    return compressed_text
