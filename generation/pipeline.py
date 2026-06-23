@@ -1,7 +1,7 @@
 from semantic_cache import get_cache
 from llm_client import generate
 from control_group import get_answer
-
+import time
 cache = get_cache()
 
 def run_pipeline_wo_cache(query):
@@ -41,9 +41,14 @@ if __name__ == "__main__":
         option = int(input("Enter the option: "))
 
         if option == 1:
+            start = time.time()
             answer = run_pipeline(query)
+            print(f"Time Taken {time.time() - start}")
         elif option == 2:
+            start = time.time()
             answer = get_answer(query)
+            print(f"Time Taken {time.time() - start}")
+
         else:
             print("Enter valid option")
             break

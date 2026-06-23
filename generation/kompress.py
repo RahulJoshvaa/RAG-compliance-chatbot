@@ -22,6 +22,10 @@ def compress_context(
         chunk["text"]
         for chunk in chunks
     )
+    print(f"Time for join{time.time() - start}")
+
+
+    start = time.time()
 
     original_words = len(content.split())
 
@@ -41,6 +45,8 @@ def compress_context(
         query,
         convert_to_tensor=True
     )
+    print(f"Time for compress{time.time() - start}")
+
 
     sentence_embeddings = model.encode(
         sentences,
