@@ -1,3 +1,4 @@
+import time
 
 from headroom.transforms.kompress_compressor import (
     KompressCompressor,
@@ -19,16 +20,23 @@ def compress_context(query, chunks):
 
     print("Kompress Loaded")
 
+    start = time.time()
 
     content = "\n\n".join(
         chunk["text"]
         for chunk in chunks
     )
+    print(f"Time for join{time.time() - start}")
+
+
+    start = time.time()
 
     result = kompress.compress(
         content,
         context=query
     )
+    print(f"Time for compress{time.time() - start}")
+
 
     print("\n===== KOMPRESS STATS =====")
 

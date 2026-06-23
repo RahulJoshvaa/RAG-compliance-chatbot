@@ -6,7 +6,7 @@ import os
 BASE_DIR = os.path.dirname(__file__)
 
 
-def retrieve_context(query, top_k=5):
+def retrieve_context(query, top_k=8):
     db_path = os.path.join(BASE_DIR, "chroma_db")
     parent_store_path = os.path.join(
         BASE_DIR,

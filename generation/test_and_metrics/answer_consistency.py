@@ -33,7 +33,10 @@ with open(
 
     data = json.load(f)
 
-questions = data["question"][:8]
+import random
+questions = data["question"].copy()
+random.shuffle(questions)
+questions = questions[:8]
 
 # =====================================
 # IMPORT YOUR PIPELINE

@@ -1,7 +1,7 @@
 import json
 import re
 import statistics
-
+import time
 import sys
 import os
 
@@ -146,13 +146,13 @@ with open(
 
     data = json.load(f)
 
-questions = data["question"][:8]
+questions = data["question"]
 
-answers = data["answer"][:8]
+answers = data["answer"]
 
-contexts = data["contexts"][:8]
+contexts = data["contexts"]
 
-ground_truths = data["ground_truth"][:8]
+ground_truths = data["ground_truth"]
 
 # =====================================================
 # EVALUATION
@@ -163,9 +163,11 @@ faithfulness_scores = []
 recall_scores = []
 
 print("\nRunning Mock RAGAS...\n")
-
+count = 0
 for i in range(len(questions)):
-
+    count += 1
+    if count % 7 == 0:
+        time.sleep(62)  # Sleep for 60 seconds after every 7 questions to avoid rate limits
     print("=" * 60)
 
     print(
