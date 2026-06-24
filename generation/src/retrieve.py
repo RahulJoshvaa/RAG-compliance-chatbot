@@ -1,77 +1,204 @@
 import json
 import chromadb
-from langchain_community.embeddings import HuggingFaceEmbeddings
 import os
+
+from langchain_community.embeddings import (
+    HuggingFaceEmbeddings
+)
 
 BASE_DIR = os.path.dirname(__file__)
 
+# MUST match ingest.py
+embeddings = HuggingFaceEmbeddings(
+    model_name="BAAI/bge-base-en-v1.5"
+)
 
-def retrieve_context(query, top_k=8):
-    db_path = os.path.join(BASE_DIR, "chroma_db")
+
+def retrieve_context(
+    query,
+    top_k=4
+):
+
+    db_path = os.path.join(
+        BASE_DIR,
+        "chroma_db"
+    )
+
     parent_store_path = os.path.join(
         BASE_DIR,
         "parent_document_store.json"
     )
 
-    # 1. Initialize the exact same local embedding model
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    
-    # 2. Connect to our local ChromaDB collection
-    chroma_client = chromadb.PersistentClient(path=db_path)
     try:
-        child_collection = chroma_client.get_collection(name="compliance_child_chunks")
+        chroma_client = (
+            chromadb.PersistentClient(
+                path=db_path
+            )
+        )
+
+        child_collection = (
+            chroma_client.get_collection(
+                name="compliance_child_chunks"
+            )
+        )
+
     except Exception:
-        print("[Error] Could not find the vector database collection. Did you run ingest.py first?")
-        return
+        print(
+            "[Error] Could not find Chroma collection."
+        )
+        return []
 
-    # 3. Load our Parent document mapper
     try:
-        with open(parent_store_path, "r") as file:
-            parent_document_store = json.load(file)
+        with open(
+            parent_store_path,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            parent_document_store = (
+                json.load(file)
+            )
+
     except FileNotFoundError:
-        print("[Error] Parent document store file missing.")
-        return
+        print(
+            "[Error] Parent document store missing."
+        )
+        return []
 
-    print(f"\n[Query] Searching baseline database for: '{query}'")
+    print(
+        f"\n[Query] Searching database for: '{query}'"
+    )
 
-    # 4. Search the database using the child vectors
+    # Embed query using BGE
+    query_embedding = (
+        embeddings.embed_query(query)
+    )
+
+    # Search using vector
     results = child_collection.query(
-        query_texts=[query],
+        query_embeddings=[
+            query_embedding
+        ],
         n_results=top_k
     )
 
-    # 5. Fetch the structural Parent contexts using the retrieved child IDs
-    metadatas = results['metadatas'][0] if results['metadatas'] else []
-    
+    metadatas = (
+        results["metadatas"][0]
+        if results["metadatas"]
+        else []
+    )
+
     seen_parents = set()
+
     retrieved_contexts = []
 
     for meta in metadatas:
-        parent_id = meta.get("parent_id")
-        
-        # Avoid pulling the duplicate parent block if multiple children match it
-        if parent_id and parent_id not in seen_parents:
-            seen_parents.add(parent_id)
-            
-            if parent_id in parent_document_store:
-                parent_data = parent_document_store[parent_id]
-                retrieved_contexts.append({
-                    "text": parent_data["text"],
-                    "source": parent_data["metadata"]["source_file"],
-                    "page": parent_data["metadata"]["page_number"]
-                })
 
-    # 6. Display what our baseline control group found
-    # print(f"\n=== Baseline Control Group Results (Found {len(retrieved_contexts)} Unique Matching Blocks) ===")
-    # for idx, ctx in enumerate(retrieved_contexts):
-    #     print(f"\n[Match #{idx+1}] Source: {ctx['source']} (Page {ctx['page']})")
-    #     print("-" * 60)
-    #     print(ctx['text'][:400] + "..." if len(ctx['text']) > 400 else ctx['text'])
-    #     print("-" * 60)
+        parent_id = meta.get(
+            "parent_id"
+        )
 
+        if (
+            parent_id
+            and parent_id
+            not in seen_parents
+        ):
+
+            seen_parents.add(
+                parent_id
+            )
+
+            if (
+                parent_id
+                in parent_document_store
+            ):
+
+                parent_data = (
+                    parent_document_store[
+                        parent_id
+                    ]
+                )
+
+                retrieved_contexts.append(
+                    {
+                        "text":
+                        parent_data[
+                            "text"
+                        ],
+
+                        "source":
+                        parent_data[
+                            "metadata"
+                        ][
+                            "source_file"
+                        ],
+
+                        "page":
+                        parent_data[
+                            "metadata"
+                        ][
+                            "page_number"
+                        ]
+                    }
+                )
+
+    print(
+        f"[Retrieved {len(retrieved_contexts)} parent chunks]"
+    )
+    total_words = sum(
+    len(ctx["text"].split())
+    for ctx in retrieved_contexts
+)
+
+    total_chars = sum(
+        len(ctx["text"])
+        for ctx in retrieved_contexts
+    )
+
+    print(
+        f"[Retrieved {len(retrieved_contexts)} parent chunks]"
+    )
+
+    print(
+        f"[Retrieved Words: {total_words}]"
+    )
+
+    print(
+        f"[Retrieved Characters: {total_chars}]"
+)
     return retrieved_contexts
 
+
+
 if __name__ == "__main__":
-    # Test your baseline pipeline with a common compliance keyword
-    sample_query = "What are the rules regarding risk management framework and ICT compliance?"
-    retrieve_context(sample_query, top_k=3)
+
+    sample_query = (
+        "What are the rules regarding "
+        "risk management framework and ICT compliance?"
+    )
+
+    contexts = retrieve_context(
+        sample_query,
+        top_k=3
+    )
+
+    for i, ctx in enumerate(
+        contexts,
+        start=1
+    ):
+
+        print(
+            f"\n--- Result {i} ---"
+        )
+
+        print(
+            f"Source: {ctx['source']}"
+        )
+
+        print(
+            f"Page: {ctx['page']}"
+        )
+
+        print(
+            ctx["text"][:500]
+        )

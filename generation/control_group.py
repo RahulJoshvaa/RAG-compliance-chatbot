@@ -1,6 +1,6 @@
 from src.retrieve import retrieve_context
 import google.generativeai as genai
-
+import time
 from config import (
     GEMINI_API_KEY,
     GEMINI_MODEL
@@ -32,6 +32,7 @@ CONTEXT:
 QUESTION:
 {query}
 """
+
 
     response = model.generate_content(prompt)
 

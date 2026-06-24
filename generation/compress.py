@@ -3,10 +3,10 @@ from sentence_transformers import (
     SentenceTransformer,
     util
 )
-
+import time
 # Keep same embedding as retriever for fair comparison
 model = SentenceTransformer(
-    "sentence-transformers/all-MiniLM-L6-v2"
+    "BAAI/bge-small-en-v1.5"
 )
 
 
@@ -22,7 +22,6 @@ def compress_context(
         chunk["text"]
         for chunk in chunks
     )
-    print(f"Time for join{time.time() - start}")
 
 
     start = time.time()
@@ -45,7 +44,6 @@ def compress_context(
         query,
         convert_to_tensor=True
     )
-    print(f"Time for compress{time.time() - start}")
 
 
     sentence_embeddings = model.encode(
@@ -135,4 +133,6 @@ def compress_context(
         f"{compressed_words/original_words:.2f}"
     )
 
-    return compressed_text
+    c_ratio = round(compressed_words/original_words, 2)
+
+    return {"compressed_text": compressed_text, "c_ratio": c_ratio}

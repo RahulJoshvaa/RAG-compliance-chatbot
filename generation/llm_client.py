@@ -1,7 +1,7 @@
 
 import google.generativeai as genai
 from prompt_builder import build_prompt
-
+import time
 from config import (
     GEMINI_API_KEY,
     GEMINI_MODEL
@@ -17,7 +17,6 @@ model = genai.GenerativeModel(
 
 def generate(query) -> str:
     prompt = build_prompt(query)
-
     response = model.generate_content(
         prompt
     )
