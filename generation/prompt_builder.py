@@ -14,7 +14,15 @@ Rules:
 
 def build_prompt(query: str) -> str:
     chunks = retrieve_context(query)
-    context = compress_context(query, chunks)
+    compressed = compress_context(query, chunks)
+
+    # compress_context returns {"compressed_text", "c_ratio"} normally, but
+    # falls back to a plain string when there are no sentences to compress.
+    context = (
+        compressed["compressed_text"]
+        if isinstance(compressed, dict)
+        else compressed
+    )
 
     return f"""
 {SYSTEM_PROMPT}

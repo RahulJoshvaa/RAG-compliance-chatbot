@@ -1,0 +1,19 @@
+# Complete backend dependency set for running api.py (LIVE mode).
+# Install with:  pip install -r requirements-all.txt
+
+# Web server
+flask==3.0.3
+flask-cors==4.0.1
+
+# LLM
+google-generativeai==0.8.6
+
+# Embeddings / compression (pulls torch + transformers automatically)
+sentence-transformers==3.0.1
+
+# Retrieval + ingestion stack
+langchain==0.3.0
+langchain-community==0.3.0
+langchain-experimental==0.3.0
+pypdf==4.2.0
+chromadb

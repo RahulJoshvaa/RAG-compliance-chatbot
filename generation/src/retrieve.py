@@ -142,13 +142,10 @@ def retrieve_context(
                     }
                 )
 
-    print(
-        f"[Retrieved {len(retrieved_contexts)} parent chunks]"
-    )
     total_words = sum(
-    len(ctx["text"].split())
-    for ctx in retrieved_contexts
-)
+        len(ctx["text"].split())
+        for ctx in retrieved_contexts
+    )
 
     total_chars = sum(
         len(ctx["text"])
