@@ -11,25 +11,25 @@ export default function Hero({ mode, onMetrics }) {
         <h1 className="text-5xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl">
           Smart{" "}
           <span className="bg-gradient-to-r from-brand-400 to-accent bg-clip-text text-transparent">
-            Compliance
+            RAG Based
           </span>{" "}
-          Assistant with{" "}
+           Compliance Assistant{" "}
           <span className="bg-gradient-to-r from-brand-400 to-accent bg-clip-text text-transparent">
-            Advanced RAG
           </span>{" "}
-          System
         </h1>
 
         {/* Three-line project intro */}
-        <p className="mt-5 max-w-md text-base leading-relaxed text-slate-400">
-          A Retrieval-Augmented Generation chatbot built for complex financial
-          and operational resilience regulations.
-          <br />
-          It answers compliance-based queries with grounded, citation-backed
-          responses you can trust.
-          <br />
-          Just ask in plain language and get precise answers in seconds.
-        </p>
+          <p className="mt-5 max-w-md text-base leading-relaxed text-slate-400">
+            A cost-efficient Retrieval-Augmented Generation chatbot that leverages
+            context compression to minimize unnecessary tokens sent to the LLM.
+            <br />
+            Our compression pipeline reduces inference costs and response latency while
+            maintaining accurate, citation-backed answers for complex financial
+            regulations.
+            <br />
+            Ask compliance questions in plain language and receive precise answers in
+            seconds.
+          </p>
 
         {/* CTA */}
         <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -49,7 +49,7 @@ export default function Hero({ mode, onMetrics }) {
       {/* Right column — sphere + floating chat card */}
       <div className="relative h-[420px] sm:h-[480px] lg:h-[520px]">
         <OrbitSphere />
-        <div className="absolute -bottom-6 left-1/2 z-30 w-[92%] max-w-md -translate-x-1/2 lg:left-8 lg:w-[125%] lg:max-w-xl lg:translate-x-0">
+        <div className="absolute bottom-5 left-1/2 z-30 w-[92%] max-w-md -translate-x-1/2 lg:left-8 lg:w-[125%] lg:max-w-xl lg:translate-x-0">
           <ChatCard mode={mode} onMetrics={onMetrics} />
         </div>
       </div>

@@ -2,6 +2,8 @@ import os
 import json
 import uuid
 import chromadb
+import re
+from sentence_transformers import SentenceTransformer
 
 from langchain_community.document_loaders import (
     PyPDFLoader
@@ -31,8 +33,12 @@ def run_pipeline():
     )
 
     embeddings = HuggingFaceEmbeddings(
-    model_name="BAAI/bge-base-en-v1.5"
-)
+        model_name="BAAI/bge-base-en-v1.5"
+    )
+
+    sentence_model = SentenceTransformer(
+        "BAAI/bge-small-en-v1.5"
+    )
     sample_vector = embeddings.embed_query(
         "test"
     )
@@ -134,18 +140,33 @@ def run_pipeline():
                 ) + 1
             )
 
-            parent_document_store[
-                parent_id
-            ] = {
-                "text":
-                parent_chunk.page_content,
+            sentences = [
+                s.strip()
+                for s in re.split(
+                    r'(?<=[.!?])\s+',
+                    parent_chunk.page_content
+                )
+                if s.strip()
+            ]
+
+            sentence_embeddings = sentence_model.encode(
+                sentences,
+                convert_to_numpy=True
+            ).tolist()
+
+            parent_document_store[parent_id] = {
+
+                "text": parent_chunk.page_content,
+
+                "sentences": sentences,
+
+                "sentence_embeddings": sentence_embeddings,
 
                 "metadata": {
-                    "source_file":
-                    pdf_name,
 
-                    "page_number":
-                    page_num
+                    "source_file": pdf_name,
+
+                    "page_number": page_num
                 }
             }
 

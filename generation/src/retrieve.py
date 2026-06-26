@@ -8,7 +8,6 @@ from langchain_community.embeddings import (
 
 BASE_DIR = os.path.dirname(__file__)
 
-# MUST match ingest.py
 embeddings = HuggingFaceEmbeddings(
     model_name="BAAI/bge-base-en-v1.5"
 )
@@ -16,7 +15,7 @@ embeddings = HuggingFaceEmbeddings(
 
 def retrieve_context(
     query,
-    top_k=4
+    top_k=5
 ):
 
     db_path = os.path.join(
@@ -30,55 +29,51 @@ def retrieve_context(
     )
 
     try:
-        chroma_client = (
-            chromadb.PersistentClient(
-                path=db_path
-            )
+
+        chroma_client = chromadb.PersistentClient(
+            path=db_path
         )
 
-        child_collection = (
-            chroma_client.get_collection(
-                name="compliance_child_chunks"
-            )
+        child_collection = chroma_client.get_collection(
+            name="compliance_child_chunks"
         )
 
     except Exception:
+
         print(
             "[Error] Could not find Chroma collection."
         )
+
         return []
 
     try:
+
         with open(
             parent_store_path,
             "r",
             encoding="utf-8"
         ) as file:
 
-            parent_document_store = (
-                json.load(file)
-            )
+            parent_document_store = json.load(file)
 
     except FileNotFoundError:
+
         print(
             "[Error] Parent document store missing."
         )
+
         return []
 
     print(
         f"\n[Query] Searching database for: '{query}'"
     )
 
-    # Embed query using BGE
-    query_embedding = (
-        embeddings.embed_query(query)
+    query_embedding = embeddings.embed_query(
+        query
     )
 
-    # Search using vector
     results = child_collection.query(
-        query_embeddings=[
-            query_embedding
-        ],
+        query_embeddings=[query_embedding],
         n_results=top_k
     )
 
@@ -100,45 +95,40 @@ def retrieve_context(
 
         if (
             parent_id
-            and parent_id
-            not in seen_parents
+            and parent_id not in seen_parents
         ):
 
-            seen_parents.add(
-                parent_id
-            )
+            seen_parents.add(parent_id)
 
-            if (
-                parent_id
-                in parent_document_store
-            ):
+            if parent_id in parent_document_store:
 
                 parent_data = (
-                    parent_document_store[
-                        parent_id
-                    ]
+                    parent_document_store[parent_id]
                 )
 
                 retrieved_contexts.append(
                     {
+
                         "text":
-                        parent_data[
-                            "text"
-                        ],
+                            parent_data["text"],
+
+                        "sentences":
+                            parent_data["sentences"],
+
+                        "sentence_embeddings":
+                            parent_data[
+                                "sentence_embeddings"
+                            ],
 
                         "source":
-                        parent_data[
-                            "metadata"
-                        ][
-                            "source_file"
-                        ],
+                            parent_data["metadata"][
+                                "source_file"
+                            ],
 
                         "page":
-                        parent_data[
-                            "metadata"
-                        ][
-                            "page_number"
-                        ]
+                            parent_data["metadata"][
+                                "page_number"
+                            ]
                     }
                 )
 
@@ -162,9 +152,9 @@ def retrieve_context(
 
     print(
         f"[Retrieved Characters: {total_chars}]"
-)
-    return retrieved_contexts
+    )
 
+    return retrieved_contexts
 
 
 if __name__ == "__main__":

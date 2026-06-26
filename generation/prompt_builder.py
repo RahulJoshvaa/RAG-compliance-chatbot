@@ -1,6 +1,6 @@
 from compress import compress_context
 from src.retrieve import retrieve_context
-
+import time
 SYSTEM_PROMPT = """
 You are a financial compliance assistant.
 
@@ -11,20 +11,23 @@ Rules:
 """
 
 
+def build_prompt(query):
 
-def build_prompt(query: str) -> str:
+    t = time.perf_counter()
     chunks = retrieve_context(query)
-    compressed = compress_context(query, chunks)
+    print(f"Retrieve: {time.perf_counter() - t:.2f}s")
 
-    # compress_context returns {"compressed_text", "c_ratio"} normally, but
-    # falls back to a plain string when there are no sentences to compress.
+    t = time.perf_counter()
+    compressed = compress_context(query, chunks)
+    print(f"Compress: {time.perf_counter() - t:.2f}s")
+
     context = (
         compressed["compressed_text"]
         if isinstance(compressed, dict)
         else compressed
     )
 
-    return f"""
+    prompt = f"""
 {SYSTEM_PROMPT}
 
 CONTEXT:
@@ -33,3 +36,5 @@ CONTEXT:
 QUESTION:
 {query}
 """
+
+    return prompt, chunks

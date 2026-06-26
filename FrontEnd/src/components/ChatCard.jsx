@@ -105,8 +105,7 @@ export default function ChatCard({ mode, onMetrics }) {
   const busy = loading || streaming;
 
   return (
-    <div className="rounded-2xl p-3 ring-2 ring-brand-400/70">
-      {/* Conversation — answer on the left, query on the right */}
+<div className="rounded-2xl bg-slate-950/70 backdrop-blur-lg p-3 ring-2 ring-brand-400/70 shadow-2xl">      {/* Conversation — answer on the left, query on the right */}
       <div
         ref={scrollRef}
         className="no-scrollbar flex max-h-[380px] min-h-28 flex-col gap-3 overflow-y-auto px-1 py-2"

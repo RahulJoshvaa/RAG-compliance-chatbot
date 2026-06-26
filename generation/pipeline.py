@@ -1,57 +1,44 @@
-from semantic_cache import get_cache
+import time
+
 from llm_client import generate
 from control_group import get_answer
-import time
-cache = get_cache()
 
-def run_pipeline_wo_cache(query):
-    answer = generate(query)
-
-    return answer
 
 def run_pipeline(query):
-    cached = cache.get(query)
 
-    if cached:
-        print("Cache HIT")
-        return cached.response
+    start = time.perf_counter()
 
-    print("Cache MISS")
+    result = generate(query)
 
-    answer = generate(query)
+    return {
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "mode": "COMPRESSED_RAG",
+        "live": True,
+        "metrics": {
+            "latency": round(
+                time.perf_counter() - start,
+                2
+            )
+        }
+    }
 
-    if answer:
-        cache.put(
-            query=query,
-            response=answer
-        )
 
-    return answer
+def run_traditional_pipeline(query):
 
+    start = time.time()
 
-if __name__ == "__main__":
+    result = get_answer(query)
 
-    while True:
-
-        query = input("Enter the query: ")
-
-        if query == "1":
-            break
-        print("Choose the pipeline for answer generation\n1.Headroom RAG\n2.Traditional RAG")
-        option = int(input("Enter the option: "))
-
-        if option == 1:
-            start = time.time()
-            answer = run_pipeline(query)
-            print(f"Time Taken {time.time() - start}")
-        elif option == 2:
-            start = time.time()
-            answer = get_answer(query)
-            print(f"Time Taken {time.time() - start}")
-
-        else:
-            print("Enter valid option")
-            break
-
-        print("\nANSWER FOR THE QUERY\n")
-        print(answer)
+    return {
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "mode": "TRADITIONAL_RAG",
+        "live": True,
+        "metrics": {
+            "latency": round(
+                time.time() - start,
+                2
+            )
+        }
+    }

@@ -17,3 +17,6 @@ langchain-community==0.3.0
 langchain-experimental==0.3.0
 pypdf==4.2.0
 chromadb
+headroom-ai==0.24.0
+torch==2.11.0
+groq

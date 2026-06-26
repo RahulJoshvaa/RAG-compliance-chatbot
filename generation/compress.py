@@ -1,10 +1,12 @@
-import re
+import time
+import torch
+
 from sentence_transformers import (
     SentenceTransformer,
     util
 )
-import time
-# Keep same embedding as retriever for fair comparison
+
+# Same model used during ingestion
 model = SentenceTransformer(
     "BAAI/bge-small-en-v1.5"
 )
@@ -16,79 +18,89 @@ def compress_context(
     top_n=10,
     window_size=1
 ):
-    print("Loading Sentence Compressor...")
 
-    content = "\n\n".join(
-        chunk["text"]
+    original_words = sum(
+        len(chunk["text"].split())
         for chunk in chunks
     )
 
+    all_sentences = []
+    all_embeddings = []
 
-    start = time.time()
+    for chunk in chunks:
 
-    original_words = len(content.split())
-
-    sentences = [
-        s.strip()
-        for s in re.split(
-            r'(?<=[.!?])\s+',
-            content
+        all_sentences.extend(
+            chunk["sentences"]
         )
-        if s.strip()
-    ]
 
-    if not sentences:
-        return content
+        all_embeddings.extend(
+            chunk["sentence_embeddings"]
+        )
 
-    query_embedding = model.encode(
-        query,
-        convert_to_tensor=True
+    if not all_sentences:
+        return ""
+
+    start = time.perf_counter()
+
+    with torch.no_grad():
+
+        query_embedding = model.encode(
+            query,
+            convert_to_tensor=True
+        )
+
+    sentence_embeddings = torch.tensor(
+        all_embeddings,
+        dtype=torch.float32
     )
 
-
-    sentence_embeddings = model.encode(
-        sentences,
-        convert_to_tensor=True
+    print(
+        f"Query Embedding: {time.perf_counter() - start:.2f}s"
     )
+
+    start = time.perf_counter()
 
     scores = util.cos_sim(
         query_embedding,
         sentence_embeddings
     )[0]
 
-    # Rank sentences by similarity
+    print(
+        f"Similarity Time: {time.perf_counter() - start:.4f}s"
+    )
+
     ranked = sorted(
         enumerate(scores),
         key=lambda x: float(x[1]),
         reverse=True
     )
 
-    # Keep top N
     top_indices = {
         idx
         for idx, _
-        in ranked[:min(top_n, len(sentences))]
+        in ranked[:min(top_n, len(all_sentences))]
     }
 
-    # Add neighboring sentences for context
     selected_indices = set()
 
     for idx in top_indices:
-        start = max(
+
+        left = max(
             0,
             idx - window_size
         )
 
-        end = min(
-            len(sentences),
+        right = min(
+            len(all_sentences),
             idx + window_size + 1
         )
 
-        for i in range(start, end):
-            selected_indices.add(i)
+        selected_indices.update(
+            range(left, right)
+        )
 
     compressed_sentences = [
-        sentences[i]
+        all_sentences[i]
         for i in sorted(selected_indices)
     ]
 
@@ -104,7 +116,7 @@ def compress_context(
 
     print(
         "Total Sentences:",
-        len(sentences)
+        len(all_sentences)
     )
 
     print(
@@ -124,8 +136,7 @@ def compress_context(
 
     print(
         "Words Saved:",
-        original_words -
-        compressed_words
+        original_words - compressed_words
     )
 
     print(
@@ -133,6 +144,12 @@ def compress_context(
         f"{compressed_words/original_words:.2f}"
     )
 
-    c_ratio = round(compressed_words/original_words, 2)
+    c_ratio = round(
+        compressed_words / original_words,
+        2
+    )
 
-    return {"compressed_text": compressed_text, "c_ratio": c_ratio}
+    return {
+        "compressed_text": compressed_text,
+        "c_ratio": c_ratio
+    }
