@@ -19,14 +19,17 @@ def run_pipeline(query):
             "latency": round(
                 time.perf_counter() - start,
                 2
-            )
+            ),
+            "input_tokens": result["input_tokens"],
+            "output_tokens": result["output_tokens"],
+            "total_tokens": result["total_tokens"]
         }
     }
 
 
 def run_traditional_pipeline(query):
 
-    start = time.time()
+    start = time.perf_counter()
 
     result = get_answer(query)
 
@@ -37,8 +40,11 @@ def run_traditional_pipeline(query):
         "live": True,
         "metrics": {
             "latency": round(
-                time.time() - start,
+                time.perf_counter() - start,
                 2
-            )
+            ),
+            "input_tokens": result["input_tokens"],
+            "output_tokens": result["output_tokens"],
+            "total_tokens": result["total_tokens"]
         }
     }

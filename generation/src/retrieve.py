@@ -12,56 +12,76 @@ embeddings = HuggingFaceEmbeddings(
     model_name="BAAI/bge-base-en-v1.5"
 )
 
+# ------------------------------------------------------------------
+# Load parent document store ONCE at startup
+# ------------------------------------------------------------------
+
+PARENT_STORE_PATH = os.path.join(
+    BASE_DIR,
+    "parent_document_store.json"
+)
+
+print("[Startup] Loading parent document store...")
+
+try:
+
+    with open(
+        PARENT_STORE_PATH,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+        PARENT_DOCUMENT_STORE = json.load(file)
+
+    print(
+        f"[Startup] Loaded {len(PARENT_DOCUMENT_STORE)} parent chunks."
+    )
+
+except FileNotFoundError:
+
+    print(
+        "[Error] Parent document store missing."
+    )
+
+    PARENT_DOCUMENT_STORE = {}
+
+
+# ------------------------------------------------------------------
+# Initialize Chroma ONCE at startup
+# ------------------------------------------------------------------
+
+DB_PATH = os.path.join(
+    BASE_DIR,
+    "chroma_db"
+)
+
+try:
+
+    chroma_client = chromadb.PersistentClient(
+        path=DB_PATH
+    )
+
+    CHILD_COLLECTION = chroma_client.get_collection(
+        name="compliance_child_chunks"
+    )
+
+    print("[Startup] Chroma collection loaded.")
+
+except Exception:
+
+    print(
+        "[Error] Could not find Chroma collection."
+    )
+
+    CHILD_COLLECTION = None
+
 
 def retrieve_context(
     query,
     top_k=5
 ):
 
-    db_path = os.path.join(
-        BASE_DIR,
-        "chroma_db"
-    )
-
-    parent_store_path = os.path.join(
-        BASE_DIR,
-        "parent_document_store.json"
-    )
-
-    try:
-
-        chroma_client = chromadb.PersistentClient(
-            path=db_path
-        )
-
-        child_collection = chroma_client.get_collection(
-            name="compliance_child_chunks"
-        )
-
-    except Exception:
-
-        print(
-            "[Error] Could not find Chroma collection."
-        )
-
-        return []
-
-    try:
-
-        with open(
-            parent_store_path,
-            "r",
-            encoding="utf-8"
-        ) as file:
-
-            parent_document_store = json.load(file)
-
-    except FileNotFoundError:
-
-        print(
-            "[Error] Parent document store missing."
-        )
-
+    if CHILD_COLLECTION is None:
         return []
 
     print(
@@ -72,8 +92,10 @@ def retrieve_context(
         query
     )
 
-    results = child_collection.query(
-        query_embeddings=[query_embedding],
+    results = CHILD_COLLECTION.query(
+        query_embeddings=[
+            query_embedding
+        ],
         n_results=top_k
     )
 
@@ -98,37 +120,44 @@ def retrieve_context(
             and parent_id not in seen_parents
         ):
 
-            seen_parents.add(parent_id)
+            seen_parents.add(
+                parent_id
+            )
 
-            if parent_id in parent_document_store:
+            if parent_id in PARENT_DOCUMENT_STORE:
 
                 parent_data = (
-                    parent_document_store[parent_id]
+                    PARENT_DOCUMENT_STORE[
+                        parent_id
+                    ]
                 )
 
                 retrieved_contexts.append(
                     {
-
                         "text":
-                            parent_data["text"],
+                        parent_data["text"],
 
                         "sentences":
-                            parent_data["sentences"],
+                        parent_data["sentences"],
 
                         "sentence_embeddings":
-                            parent_data[
-                                "sentence_embeddings"
-                            ],
+                        parent_data[
+                            "sentence_embeddings"
+                        ],
 
                         "source":
-                            parent_data["metadata"][
-                                "source_file"
-                            ],
+                        parent_data[
+                            "metadata"
+                        ][
+                            "source_file"
+                        ],
 
                         "page":
-                            parent_data["metadata"][
-                                "page_number"
-                            ]
+                        parent_data[
+                            "metadata"
+                        ][
+                            "page_number"
+                        ]
                     }
                 )
 

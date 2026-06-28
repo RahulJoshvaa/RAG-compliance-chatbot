@@ -77,7 +77,10 @@ QUESTION:
 
     return {
         "answer": completion.choices[0].message.content,
-        "sources": dedupe_sources(chunks)
+        "sources": dedupe_sources(chunks),
+        "input_tokens": completion.usage.prompt_tokens,
+        "output_tokens": completion.usage.completion_tokens,
+        "total_tokens": completion.usage.total_tokens
     }
 
 
