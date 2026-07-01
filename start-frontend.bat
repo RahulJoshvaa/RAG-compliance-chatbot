@@ -5,7 +5,7 @@ REM  First run installs npm packages; later runs start directly.
 REM ============================================================
 
 setlocal
-cd /d "%~dp0FrontEnd"
+cd /d "%~dp0frontend"
 
 if not exist "node_modules" (
     echo [setup] Installing frontend dependencies ^(first run only^)...
