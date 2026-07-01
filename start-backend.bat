@@ -6,7 +6,7 @@ REM  later runs reuse it and start immediately.
 REM ============================================================
 
 setlocal
-cd /d "%~dp0generation"
+cd /d "%~dp0backend"
 
 if not exist ".venv\Scripts\python.exe" (
     echo [setup] Creating virtual environment...
@@ -19,7 +19,7 @@ if not exist ".venv\Scripts\python.exe" (
     echo [setup] Installing backend dependencies ^(this takes a few minutes^)...
     call ".venv\Scripts\activate.bat"
     python -m pip install --upgrade pip
-    python -m pip install -r requirements-all.txt
+    python -m pip install -r requirements.txt
     if errorlevel 1 (
         echo [error] Dependency install failed. See messages above.
         pause

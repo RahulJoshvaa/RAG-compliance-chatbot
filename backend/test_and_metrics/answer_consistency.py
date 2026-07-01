@@ -42,7 +42,7 @@ questions = questions[:8]
 # IMPORT YOUR PIPELINE
 # =====================================
 
-from pipeline import run_pipeline_wo_cache
+from pipeline1 import run_pipeline_wo_cache
 
 # =====================================
 # CONSISTENCY

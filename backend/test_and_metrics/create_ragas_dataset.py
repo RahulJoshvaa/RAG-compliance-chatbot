@@ -7,7 +7,7 @@ sys.path.append(
         os.path.dirname(__file__)
     )
 )
-
+from pipeline1 import run_pipeline_wo_cache
 from pipeline import run_pipeline
 from src.retrieve import retrieve_context
 
@@ -120,7 +120,7 @@ for q in questions:
         for chunk in retrieved
     ]
 
-    answer = run_pipeline(q)
+    answer = run_pipeline_wo_cache(q)
 
     answers.append(answer)
     contexts.append(ctx)

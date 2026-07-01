@@ -11,19 +11,17 @@ sys.path.append(
     )
 )
 
-from config import GEMINI_API_KEY, GEMINI_MODEL
-import google.generativeai as genai
+from groq import Groq
+from config import GROQ_API_KEY
 
 # =====================================================
 # CONFIG
 # =====================================================
 
-GOOGLE_API_KEY = GEMINI_API_KEY
+MODEL = "openai/gpt-oss-120b"
 
-genai.configure(api_key=GOOGLE_API_KEY)
-
-model = genai.GenerativeModel(
-    GEMINI_MODEL
+client = Groq(
+    api_key=GROQ_API_KEY
 )
 
 # =====================================================
@@ -43,6 +41,22 @@ def extract_score(text):
     return 0.0
 
 
+def ask_llm(prompt):
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        temperature=0,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return response.choices[0].message.content.strip()
+
+
 # =====================================================
 # FAITHFULNESS
 # =====================================================
@@ -55,36 +69,38 @@ def faithfulness_score(
     context_text = "\n\n".join(contexts)
 
     prompt = f"""
-You are evaluating a RAG system.
+You are evaluating a Retrieval-Augmented Generation (RAG) system.
 
-CONTEXT:
-{context_text}
+Task:
+Determine whether the Generated Answer is supported by the Retrieved Context.
 
-ANSWER:
-{answer}
-
-Determine whether the answer is supported
-by the retrieved context.
+Rules:
+- Compare ONLY the Generated Answer against the Retrieved Context.
+- Ignore wording differences.
+- Consider paraphrases and semantically equivalent information as supported.
+- Ignore information that is not relevant.
 
 Scoring:
-
 1.0 = completely supported
-
 0.8 = mostly supported
-
 0.5 = partially supported
-
 0.0 = unsupported
 
-Return ONLY a score in range 0 - 1.
+Return ONLY one number:
+1.0
+0.8
+0.5
+0.0
+
+Retrieved Context:
+{context_text}
+
+Generated Answer:
+{answer}
 """
 
-    response = model.generate_content(
-        prompt
-    )
-
     return extract_score(
-        response.text
+        ask_llm(prompt)
     )
 
 
@@ -100,37 +116,39 @@ def context_recall_score(
     context_text = "\n\n".join(contexts)
 
     prompt = f"""
-You are evaluating retrieval quality.
+You are evaluating Context Recall for a Retrieval-Augmented Generation (RAG) system.
 
-GROUND TRUTH:
-{ground_truth}
+Task:
+Determine how much of the factual information contained in the Ground Truth is present in the Retrieved Context.
 
-RETRIEVED CONTEXT:
-{context_text}
-
-Determine how much of the ground truth
-information is present inside the
-retrieved context.
+Rules:
+- Compare ONLY the Ground Truth and the Retrieved Context.
+- Ignore wording differences.
+- Consider paraphrases and semantically equivalent facts as present.
+- Ignore additional information in the Retrieved Context.
+- Judge only whether the Ground Truth can be completely derived from the Retrieved Context.
 
 Scoring:
+1.0 = All important facts are present.
+0.8 = Most important facts are present.
+0.5 = Some important facts are present.
+0.0 = None of the important facts are present.
 
-1.0 = everything present
+Return ONLY one number:
+1.0
+0.8
+0.5
+0.0
 
-0.8 = most present
+Ground Truth:
+{ground_truth}
 
-0.5 = partially present
-
-0.0 = absent
-
-Return ONLY a score in range 0 - 1.
+Retrieved Context:
+{context_text}
 """
 
-    response = model.generate_content(
-        prompt
-    )
-
     return extract_score(
-        response.text
+        ask_llm(prompt)
     )
 
 
@@ -147,11 +165,8 @@ with open(
     data = json.load(f)
 
 questions = data["question"]
-
 answers = data["answer"]
-
 contexts = data["contexts"]
-
 ground_truths = data["ground_truth"]
 
 # =====================================================
@@ -159,20 +174,14 @@ ground_truths = data["ground_truth"]
 # =====================================================
 
 faithfulness_scores = []
-
 recall_scores = []
 
 print("\nRunning Mock RAGAS...\n")
-count = 0
-for i in range(len(questions)):
-    count += 1
-    if count % 7 == 0:
-        time.sleep(62)  # Sleep for 60 seconds after every 7 questions to avoid rate limits
-    print("=" * 60)
 
-    print(
-        f"Question {i+1}/{len(questions)}"
-    )
+for i in range(len(questions)):
+
+    print("=" * 60)
+    print(f"Question {i+1}/{len(questions)}")
 
     faith = faithfulness_score(
         answers[i],
@@ -192,13 +201,12 @@ for i in range(len(questions)):
         recall
     )
 
-    print(
-        f"Faithfulness : {faith:.2f}"
-    )
+    print(f"Faithfulness   : {faith:.2f}")
+    print(f"Context Recall : {recall:.2f}")
 
-    print(
-        f"Context Recall : {recall:.2f}"
-    )
+    # Helps avoid hitting rate limits
+    time.sleep(0.5)
+
 
 # =====================================================
 # SUMMARY
@@ -219,22 +227,17 @@ overall = (
 
 print("\n")
 print("=" * 60)
-
 print("FINAL RESULTS")
-
 print("=" * 60)
 
 print(
-    f"Faithfulness     : "
-    f"{avg_faithfulness:.3f}"
+    f"Faithfulness   : {avg_faithfulness:.3f}"
 )
 
 print(
-    f"Context Recall   : "
-    f"{avg_recall:.3f}"
+    f"Context Recall : {avg_recall:.3f}"
 )
 
 print(
-    f"Overall Score    : "
-    f"{overall:.3f}"
+    f"Overall Score  : {overall:.3f}"
 )

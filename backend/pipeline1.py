@@ -7,7 +7,7 @@ cache = get_cache()
 def run_pipeline_wo_cache(query):
     answer = generate(query)
 
-    return answer
+    return answer["answer"]
 
 def run_pipeline(query):
     cached = cache.get(query)
